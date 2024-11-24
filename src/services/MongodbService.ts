@@ -145,6 +145,14 @@ export class MongodbService {
         await this.config.save();
     }
 
+    public async use(name: string) {
+        const database = this.config.getDatabase(name);
+
+        this.config.default = database.name;
+
+        await this.config.save();
+    }
+
     public async start(name?: string, restart?: boolean): Promise<void> {
         if(!this.appConfigService.isVersionGTE || !this.appConfigService.isVersionGTE("1.0.19")) {
             throw new Error("Please update @wocker/ws");
@@ -278,7 +286,7 @@ export class MongodbService {
 
         for(const database of this.config.databases.items) {
             table.push([
-                database.name,
+                database.name + (database.name === this.config.default ? " (default)" : ""),
                 database.username,
                 database.containerName,
                 `${database.configStorage}\n${database.storage}`

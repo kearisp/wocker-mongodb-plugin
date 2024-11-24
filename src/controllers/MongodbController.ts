@@ -37,6 +37,14 @@ export class MongodbController {
         await this.mongodbService.admin();
     }
 
+    @Command("mongodb:use <name>")
+    public async use(
+        @Param("name")
+        name: string
+    ): Promise<void> {
+        await this.mongodbService.use(name);
+    }
+
     @Command("mongodb:start [name]")
     public async start(
         @Param("name")
