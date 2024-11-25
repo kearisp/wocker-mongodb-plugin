@@ -59,7 +59,7 @@ export class MongodbService {
         return this._config;
     }
 
-    public async create(name?: string): Promise<void> {
+    public async create(name?: string, username = "", password = ""): Promise<void> {
         if(name && this.config.databases.getConfig(name)) {
             throw new Error(`${name}`);
         }
@@ -82,22 +82,30 @@ export class MongodbService {
             }) as string;
         }
 
-        let username = "";
-
         if(!username) {
             username = await promptText({
                 message: "Username:",
-                type: "string"
+                type: "string",
+                required: true
             });
         }
-
-        let password = "";
 
         if(!password) {
             password = await promptText({
                 message: "Password:",
-                type: "string"
+                type: "password",
+                required: true
             });
+
+            const confirmPassword = await promptText({
+                message: "Confirm password:",
+                type: "password",
+                required: true
+            });
+
+            if(password !== confirmPassword) {
+                throw new Error("Passwords do not match");
+            }
         }
 
         const database = new Database({
