@@ -14,6 +14,7 @@ import {Database} from "../makes/Database";
 
 @Injectable()
 export class MongodbService {
+    protected _config?: Config;
     public adminContainerName = "dbadmin-mongodb.workspace";
 
     public constructor(
@@ -23,35 +24,22 @@ export class MongodbService {
         protected readonly proxyService: ProxyService
     ) {}
 
-    protected _config?: Config;
-
     public get config(): Config {
         if(!this._config) {
-            const data: ConfigProps = this.pluginConfigService.fs.exists("config.json")
-                ? this.pluginConfigService.fs.readJSON("config.json")
-                : {
-                    default: "default",
-                    databases: [
-                        {
-                            name: "default",
-                            username: "root",
-                            password: "toor",
-                            configStorage: "wocker-mongoconfig-default",
-                            storage: "wocker-mongodb-default"
-                        }
-                    ]
-                };
-
             const fs = this.pluginConfigService.fs;
+            const data: ConfigProps = fs.exists("config.json")
+                ? fs.readJSON("config.json")
+                : {};
+
             this._config = new class extends Config {
-                public async save(): Promise<void> {
+                public save(): void {
                     if(!fs.exists()) {
                         fs.mkdir("", {
                             recursive: true
                         });
                     }
 
-                    await fs.writeJSON("config.json", this.toJSON());
+                    fs.writeJSON("config.json", this.toJSON());
                 }
             }(data);
         }
@@ -59,9 +47,9 @@ export class MongodbService {
         return this._config;
     }
 
-    public async create(name?: string, username = "", password = ""): Promise<void> {
-        if(name && this.config.databases.getConfig(name)) {
-            throw new Error(`${name}`);
+    public async create(name?: string, imageName?: string, imageVersion?: string, username = "", password = ""): Promise<void> {
+        if(name && this.config.hasDatabase(name)) {
+            throw new Error(`Database name "${name}" is already taken`);
         }
 
         if(!name) {
@@ -73,7 +61,7 @@ export class MongodbService {
                         return "Name is required";
                     }
 
-                    if(this.config.databases.getConfig(name)) {
+                    if(this.config.hasDatabase(name)) {
                         return `Database name "${name}" is already taken`;
                     }
 
@@ -110,16 +98,38 @@ export class MongodbService {
 
         const database = new Database({
             name,
+            imageName,
+            imageVersion,
             username,
             password
         });
 
-        this.config.databases.setConfig(database);
-        await this.config.save();
+        this.config.setDatabase(database);
+        this.config.save();
+    }
+
+    public async upgrade(name?: string, imageName?: string, imageVersion?: string): Promise<void> {
+        const service = this.config.getDatabaseOrDefault(name);
+        let changed = false;
+
+        if(imageName) {
+            service.imageName = imageName;
+            changed = true;
+        }
+
+        if(imageVersion) {
+            service.imageVersion = imageVersion;
+            changed = true;
+        }
+
+        if(changed) {
+            this.config.setDatabase(service);
+            this.config.save();
+        }
     }
 
     public async destroy(name: string, yes?: boolean, force?: boolean): Promise<void> {
-        if(!this.appConfigService.isVersionGTE || !this.appConfigService.isVersionGTE("1.0.19")) {
+        if(!this.pluginConfigService.isVersionGTE("1.0.19")) {
             throw new Error("Please update @wocker/ws");
         }
 
@@ -149,36 +159,41 @@ export class MongodbService {
         }
 
         this.config.removeDatabase(database.name);
-
-        await this.config.save();
+        this.config.save();
     }
 
-    public async use(name: string) {
+    public use(name: string): void {
         const database = this.config.getDatabase(name);
 
         this.config.default = database.name;
 
-        await this.config.save();
+        this.config.save();
     }
 
     public async start(name?: string, restart?: boolean): Promise<void> {
-        if(!this.appConfigService.isVersionGTE || !this.appConfigService.isVersionGTE("1.0.19")) {
+        if(!this.pluginConfigService.isVersionGTE("1.0.19")) {
             throw new Error("Please update @wocker/ws");
         }
 
-        const database = this.config.getDatabase(name);
-
-        if(restart) {
-            await this.dockerService.removeContainer(database.containerName);
+        if(!name || !this.config.default) {
+            await this.create();
         }
 
+        const database = this.config.getDatabaseOrDefault(name);
+
         let container = await this.dockerService.getContainer(database.containerName);
+
+        if(restart && container) {
+            await this.dockerService.removeContainer(database.containerName);
+
+            container = null;
+        }
 
         if(!container) {
             container = await this.dockerService.createContainer({
                 name: database.containerName,
                 restart: "always",
-                image: "mongo:latest",
+                image: database.image,
                 env: {
                     MONGO_INITDB_ROOT_USERNAME: database.username,
                     MONGO_INITDB_ROOT_PASSWORD: database.password,
@@ -275,7 +290,7 @@ export class MongodbService {
     }
 
     public async stop(name?: string): Promise<void> {
-        const database = this.config.getDatabase(name);
+        const database = this.config.getDatabaseOrDefault(name);
 
         console.info(`Stopping ${database.name}...`);
 
@@ -288,6 +303,7 @@ export class MongodbService {
                 "Name",
                 "Username",
                 "Host",
+                "Image",
                 "Storages"
             ]
         });
@@ -297,6 +313,7 @@ export class MongodbService {
                 database.name + (database.name === this.config.default ? " (default)" : ""),
                 database.username,
                 database.containerName,
+                database.image,
                 `${database.configStorage}\n${database.storage}`
             ]);
         }

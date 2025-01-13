@@ -1,17 +1,17 @@
 {
     "name": "@wocker/mongodb-plugin",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "author": "Kris Papercut <krispcut@gmail.com>",
     "description": "Mongodb plugin for wocker",
     "license": "MIT",
-    "main": "lib/index.js",
-    "types": "lib/index.d.ts",
+    "main": "./lib/index.js",
+    "types": "./lib/index.d.ts",
     "keywords": [
         "wocker",
         "plugin",
         "mongodb"
     ],
-    "homepage": "https://kearisp.github.io/wocker/plugins/mongodb",
+    "homepage": "https://kearisp.github.io/wocker/docs/plugins/mongodb",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/kearisp/wocker-mongodb-plugin.git"
@@ -26,12 +26,12 @@
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "dependencies": {
-        "@wocker/core": "^1.0.20",
-        "@wocker/utils": "^1.0.8",
+        "@wocker/core": "^1.0.21",
+        "@wocker/utils": "^1.0.9",
         "cli-table3": "^0.6.5"
     },
     "devDependencies": {
-        "@types/node": ">=20.17.6",
+        "@types/node": "^22.7.8",
         "typescript": "^5.6.3"
     }
 }

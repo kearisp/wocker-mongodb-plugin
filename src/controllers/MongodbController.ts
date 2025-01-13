@@ -1,5 +1,6 @@
 import {
     Controller,
+    Description,
     Completion,
     Command,
     Param,
@@ -16,20 +17,42 @@ export class MongodbController {
     ) {}
 
     @Command("mongodb:create [name]")
+    @Description("Creates a MongoDB service with configurable credentials, host, and storage options.")
     public async create(
         @Param("name")
-        name?: string
+        name?: string,
+        @Option("image", {
+            type: "string",
+            alias: "i",
+            description: "The image name to start the service with",
+        })
+        image?: string,
+        @Option("image-version", {
+            type: "string",
+            alias: "I",
+            description: "The image version to start the service with"
+        })
+        imageVersion?: string
     ): Promise<void> {
-        await this.mongodbService.create(name);
+        await this.mongodbService.create(name, image, imageVersion);
     }
 
     @Command("mongodb:destroy <name>")
+    @Description("Destroys a specified MongodbDB service instance with an option to force deletion.")
     public async destroy(
         @Param("name")
         name: string,
-        @Option("yes", {alias: "y"})
+        @Option("yes", {
+            type: "boolean",
+            alias: "y",
+            description: "Skip confirmation"
+        })
         yes?: boolean,
-        @Option("force", {alias: "f"})
+        @Option("force", {
+            type: "boolean",
+            alias: "f",
+            description: "Force deletion"
+        })
         force?: boolean
     ): Promise<void> {
         await this.mongodbService.stop(name);
@@ -38,18 +61,24 @@ export class MongodbController {
     }
 
     @Command("mongodb:use <name>")
+    @Description("Sets a specified MongoDB service as the default.")
     public async use(
         @Param("name")
         name: string
     ): Promise<void> {
-        await this.mongodbService.use(name);
+        this.mongodbService.use(name);
     }
 
     @Command("mongodb:start [name]")
+    @Description("Starts a specified MongoDB service and optionally restarts it if already running.")
     public async start(
         @Param("name")
         name?: string,
-        @Option("restart", {alias: "r"})
+        @Option("restart", {
+            type: "boolean",
+            alias: "r",
+            description: "Restart the service if already running"
+        })
         restart?: boolean
     ): Promise<void> {
         await this.mongodbService.start(name, restart);
@@ -57,6 +86,7 @@ export class MongodbController {
     }
 
     @Command("mongodb:stop [name]")
+    @Description("Stops a specified MongoDB service instance.")
     public async stop(
         @Param("name")
         name?: string
@@ -66,6 +96,7 @@ export class MongodbController {
     }
 
     @Command("mongodb:ls")
+    @Description("Lists all available MongoDB services.")
     public async list(): Promise<string> {
         return this.mongodbService.list();
     }
@@ -73,6 +104,8 @@ export class MongodbController {
     @Completion("name", "mongodb:start [name]")
     @Completion("name", "mongodb:stop [name]")
     public async getNames(): Promise<string[]> {
-        return [];
+        return this.mongodbService.config.databases.items.map((database) => {
+            return database.name;
+        });
     }
 }

@@ -22,25 +22,41 @@ export abstract class Config {
         this.databases = new ConfigCollection(Database, databases);
     }
 
-    public getDatabase(name?: string): Database {
-        if(!name) {
-            if(!this.default) {
-                throw new Error("Default database is not defined");
-            }
+    public setDatabase(database: Database): void {
+        this.databases.setConfig(database);
+    }
 
-            const database = this.databases.getConfig(this.default);
+    public hasDatabase(name: string): boolean {
+        return !!this.databases.getConfig(name);
+    }
 
-            if(!database) {
-                throw new Error(`Default database ${this.default} not found`);
-            }
-
-            return database;
+    public getDefault(): Database {
+        if(!this.default) {
+            throw new Error("Default database is not defined");
         }
 
+        const database = this.databases.getConfig(this.default);
+
+        if(!database) {
+            throw new Error(`Default database "${this.default}" not found`);
+        }
+
+        return database;
+    }
+
+    public getDatabaseOrDefault(name?: string): Database {
+        if(!name) {
+            return this.getDefault();
+        }
+
+        return this.getDatabase(name);
+    }
+
+    public getDatabase(name: string): Database {
         const database = this.databases.getConfig(name);
 
         if(!database) {
-            throw new Error(`Database ${name} not found`);
+            throw new Error(`Database "${name}" not found`);
         }
 
         return database;
@@ -50,13 +66,13 @@ export abstract class Config {
         const database = this.databases.getConfig(name);
 
         if(!database) {
-            throw new Error(`Storage ${name} not found`);
+            throw new Error(`Database "${name}" not found`);
         }
 
         this.databases.removeConfig(name);
     }
 
-    public abstract save(): Promise<void>;
+    public abstract save(): void;
 
     public toJSON(): ConfigProps {
         return {
