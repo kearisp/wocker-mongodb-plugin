@@ -47,9 +47,9 @@ export class MongodbService {
         return this._config;
     }
 
-    public async create(name?: string, image?: string, imageVersion?: string, username = "", password = ""): Promise<void> {
-        if(name && this.config.databases.getConfig(name)) {
-            throw new Error(`${name}`);
+    public async create(name?: string, imageName?: string, imageVersion?: string, username = "", password = ""): Promise<void> {
+        if(name && this.config.hasDatabase(name)) {
+            throw new Error(`Database name "${name}" is already taken`);
         }
 
         if(!name) {
@@ -61,7 +61,7 @@ export class MongodbService {
                         return "Name is required";
                     }
 
-                    if(this.config.databases.getConfig(name)) {
+                    if(this.config.hasDatabase(name)) {
                         return `Database name "${name}" is already taken`;
                     }
 
@@ -98,7 +98,7 @@ export class MongodbService {
 
         const database = new Database({
             name,
-            imageName: image,
+            imageName,
             imageVersion,
             username,
             password
