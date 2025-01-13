@@ -35,7 +35,13 @@ export abstract class Config {
             throw new Error("Default database is not defined");
         }
 
-        return this.getDatabase(this.default);
+        const database = this.databases.getConfig(this.default);
+
+        if(!database) {
+            throw new Error(`Default database "${this.default}" not found`);
+        }
+
+        return database;
     }
 
     public getDatabaseOrDefault(name?: string): Database {
@@ -47,24 +53,10 @@ export abstract class Config {
     }
 
     public getDatabase(name: string): Database {
-        // if(!name) {
-        //     if(!this.default) {
-        //         throw new Error("Default database is not defined");
-        //     }
-        //
-        //     const database = this.databases.getConfig(this.default);
-        //
-        //     if(!database) {
-        //         throw new Error(`Default database ${this.default} not found`);
-        //     }
-        //
-        //     return database;
-        // }
-
         const database = this.databases.getConfig(name);
 
         if(!database) {
-            throw new Error(`Database ${name} not found`);
+            throw new Error(`Database "${name}" not found`);
         }
 
         return database;
@@ -74,7 +66,7 @@ export abstract class Config {
         const database = this.databases.getConfig(name);
 
         if(!database) {
-            throw new Error(`Storage ${name} not found`);
+            throw new Error(`Database "${name}" not found`);
         }
 
         this.databases.removeConfig(name);
