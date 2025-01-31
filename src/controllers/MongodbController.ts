@@ -26,7 +26,7 @@ export class MongodbController {
             alias: "i",
             description: "The image name to start the service with",
         })
-        image?: string,
+        imageName?: string,
         @Option("image-version", {
             type: "string",
             alias: "I",
@@ -34,7 +34,11 @@ export class MongodbController {
         })
         imageVersion?: string
     ): Promise<void> {
-        await this.mongodbService.create(name, image, imageVersion);
+        await this.mongodbService.create({
+            name,
+            imageName,
+            imageVersion
+        });
     }
 
     @Command("mongodb:destroy <name>")

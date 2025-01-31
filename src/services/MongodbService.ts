@@ -9,7 +9,7 @@ import {promptText, promptConfirm} from "@wocker/utils";
 import CliTable from "cli-table3";
 
 import {Config, ConfigProps} from "../makes/Config";
-import {Database} from "../makes/Database";
+import {Database, DatabaseProps} from "../makes/Database";
 
 
 @Injectable()
@@ -47,13 +47,14 @@ export class MongodbService {
         return this._config;
     }
 
-    public async create(name?: string, imageName?: string, imageVersion?: string, username = "", password = ""): Promise<void> {
-        if(name && this.config.hasDatabase(name)) {
-            throw new Error(`Database name "${name}" is already taken`);
+    public async create(props: Partial<DatabaseProps> = {}): Promise<void> {
+        if(props.name && this.config.hasDatabase(props.name)) {
+            console.info(`Database name "${props.name}" is already taken`);
+            delete props.name;
         }
 
-        if(!name) {
-            name = await promptText({
+        if(!props.name) {
+            props.name = await promptText({
                 message: "Mongodb name:",
                 type: "string",
                 validate: (name?: string) => {
@@ -70,20 +71,20 @@ export class MongodbService {
             }) as string;
         }
 
-        if(!username) {
-            username = await promptText({
+        if(!props.username) {
+            props.username = await promptText({
                 message: "Username:",
                 type: "string",
                 required: true
             });
         }
 
-        if(!password) {
-            password = await promptText({
+        if(!props.password) {
+            props.password = await promptText({
                 message: "Password:",
                 type: "password",
                 required: true
-            });
+            }) as string;
 
             const confirmPassword = await promptText({
                 message: "Confirm password:",
@@ -91,17 +92,17 @@ export class MongodbService {
                 required: true
             });
 
-            if(password !== confirmPassword) {
+            if(props.password !== confirmPassword) {
                 throw new Error("Passwords do not match");
             }
         }
 
         const database = new Database({
-            name,
-            imageName,
-            imageVersion,
-            username,
-            password
+            name: props.name,
+            imageName: props.imageName,
+            imageVersion: props.imageVersion,
+            username: props.username as string,
+            password: props.password as string
         });
 
         this.config.setDatabase(database);
