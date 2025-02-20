@@ -1,5 +1,3 @@
-import {ConfigCollection} from "@wocker/core";
-
 import {Database, DatabaseProps} from "./Database";
 
 
@@ -10,7 +8,7 @@ export type ConfigProps = {
 
 export abstract class Config {
     public default?: string;
-    public databases: ConfigCollection<Database, DatabaseProps>;
+    public databases: Database[];
 
     public constructor(props: ConfigProps) {
         const {
@@ -19,15 +17,32 @@ export abstract class Config {
         } = props;
 
         this.default = defaultDatabase;
-        this.databases = new ConfigCollection(Database, databases);
+        this.databases = databases.map(database => new Database(database));
     }
 
     public setDatabase(database: Database): void {
-        this.databases.setConfig(database);
+        let exists = false;
+
+        for(let i = 0; i < this.databases.length; i++) {
+            if(this.databases[i].name === database.name) {
+                exists = true;
+                this.databases[i] = database;
+            }
+        }
+
+        if(!exists) {
+            this.databases.push(database);
+        }
+
+        if(!this.default) {
+            this.default = database.name;
+        }
     }
 
     public hasDatabase(name: string): boolean {
-        return !!this.databases.getConfig(name);
+        const database = this.databases.find(database => database.name === name);
+
+        return !!database;
     }
 
     public getDefault(): Database {
@@ -35,13 +50,7 @@ export abstract class Config {
             throw new Error("Default database is not defined");
         }
 
-        const database = this.databases.getConfig(this.default);
-
-        if(!database) {
-            throw new Error(`Default database "${this.default}" not found`);
-        }
-
-        return database;
+        return this.getDatabase(this.default);
     }
 
     public getDatabaseOrDefault(name?: string): Database {
@@ -53,7 +62,9 @@ export abstract class Config {
     }
 
     public getDatabase(name: string): Database {
-        const database = this.databases.getConfig(name);
+        const database = this.databases.find((database) => {
+            return database.name === name;
+        });
 
         if(!database) {
             throw new Error(`Database "${name}" not found`);
@@ -63,21 +74,23 @@ export abstract class Config {
     }
 
     public removeDatabase(name: string): void {
-        const database = this.databases.getConfig(name);
+        this.databases = this.databases.filter((database) => {
+            return database.name !== name;
+        });
 
-        if(!database) {
-            throw new Error(`Database "${name}" not found`);
+        if(this.default === name) {
+            delete this.default;
         }
-
-        this.databases.removeConfig(name);
     }
 
     public abstract save(): void;
 
-    public toJSON(): ConfigProps {
+    public toObject(): ConfigProps {
         return {
             default: this.default,
-            databases: this.databases.toArray()
+            databases: this.databases.length > 0
+                ? this.databases.map((database) => database.toObject())
+                : []
         };
     }
 }
