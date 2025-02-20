@@ -108,7 +108,7 @@ export class MongodbController {
     @Completion("name", "mongodb:start [name]")
     @Completion("name", "mongodb:stop [name]")
     public async getNames(): Promise<string[]> {
-        return this.mongodbService.config.databases.items.map((database) => {
+        return this.mongodbService.config.databases.map((database) => {
             return database.name;
         });
     }
