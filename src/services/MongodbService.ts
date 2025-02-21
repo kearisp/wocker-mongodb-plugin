@@ -39,7 +39,7 @@ export class MongodbService {
                         });
                     }
 
-                    fs.writeJSON("config.json", this.toJSON());
+                    fs.writeJSON("config.json", this.toObject());
                 }
             }(data);
         }
@@ -224,7 +224,7 @@ export class MongodbService {
     public async admin(): Promise<void> {
         const connections: string[] = [];
 
-        for(const database of this.config.databases.items) {
+        for(const database of this.config.databases) {
             try {
                 const container = await this.dockerService.getContainer(database.containerName);
 
@@ -309,7 +309,7 @@ export class MongodbService {
             ]
         });
 
-        for(const database of this.config.databases.items) {
+        for(const database of this.config.databases) {
             table.push([
                 database.name + (database.name === this.config.default ? " (default)" : ""),
                 database.username,
