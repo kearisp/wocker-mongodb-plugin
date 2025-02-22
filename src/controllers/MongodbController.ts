@@ -21,6 +21,18 @@ export class MongodbController {
     public async create(
         @Param("name")
         name?: string,
+        @Option("user", {
+            type: "string",
+            alias: "u",
+            description: "The username to start the service with"
+        })
+        username?: string,
+        @Option("password", {
+            type: "string",
+            alias: "p",
+            description: "The password to start the service with"
+        })
+        password?: string,
         @Option("image", {
             type: "string",
             alias: "i",
@@ -36,6 +48,8 @@ export class MongodbController {
     ): Promise<void> {
         await this.mongodbService.create({
             name,
+            username,
+            password,
             imageName,
             imageVersion
         });
