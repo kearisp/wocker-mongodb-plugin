@@ -55,6 +55,31 @@ export class MongodbController {
         });
     }
 
+    @Command("mongodb:upgrade [name]")
+    @Description("Upgrades a specified MongoDB service instance.")
+    public async upgrade(
+        @Param("name")
+        name?: string,
+        @Option("image", {
+            type: "string",
+            alias: "i",
+            description: "The image name to start the service with"
+        })
+        imageName?: string,
+        @Option("image-version", {
+            type: "string",
+            alias: "I",
+            description: "The image version to start the service with"
+        })
+        imageVersion?: string
+    ): Promise<void> {
+        await this.mongodbService.upgrade({
+            name,
+            imageName,
+            imageVersion
+        });
+    }
+
     @Command("mongodb:destroy <name>")
     @Description("Destroys a specified MongodbDB service instance with an option to force deletion.")
     public async destroy(
