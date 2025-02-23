@@ -21,6 +21,18 @@ export class MongodbController {
     public async create(
         @Param("name")
         name?: string,
+        @Option("user", {
+            type: "string",
+            alias: "u",
+            description: "The username to start the service with"
+        })
+        username?: string,
+        @Option("password", {
+            type: "string",
+            alias: "p",
+            description: "The password to start the service with"
+        })
+        password?: string,
         @Option("image", {
             type: "string",
             alias: "i",
@@ -35,6 +47,33 @@ export class MongodbController {
         imageVersion?: string
     ): Promise<void> {
         await this.mongodbService.create({
+            name,
+            username,
+            password,
+            imageName,
+            imageVersion
+        });
+    }
+
+    @Command("mongodb:upgrade [name]")
+    @Description("Upgrades a specified MongoDB service instance.")
+    public async upgrade(
+        @Param("name")
+        name?: string,
+        @Option("image", {
+            type: "string",
+            alias: "i",
+            description: "The image name to start the service with"
+        })
+        imageName?: string,
+        @Option("image-version", {
+            type: "string",
+            alias: "I",
+            description: "The image version to start the service with"
+        })
+        imageVersion?: string
+    ): Promise<void> {
+        await this.mongodbService.upgrade({
             name,
             imageName,
             imageVersion

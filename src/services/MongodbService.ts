@@ -109,17 +109,18 @@ export class MongodbService {
         this.config.save();
     }
 
-    public async upgrade(name?: string, imageName?: string, imageVersion?: string): Promise<void> {
-        const service = this.config.getDatabaseOrDefault(name);
+    public async upgrade(props: Partial<DatabaseProps>): Promise<void> {
+        const service = this.config.getDatabaseOrDefault(props.name);
+
         let changed = false;
 
-        if(imageName) {
-            service.imageName = imageName;
+        if(props.imageName) {
+            service.imageName = props.imageName;
             changed = true;
         }
 
-        if(imageVersion) {
-            service.imageVersion = imageVersion;
+        if(props.imageVersion) {
+            service.imageVersion = props.imageVersion;
             changed = true;
         }
 

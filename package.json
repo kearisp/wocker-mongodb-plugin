@@ -1,6 +1,6 @@
 {
     "name": "@wocker/mongodb-plugin",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "author": "Kris Papercut <krispcut@gmail.com>",
     "description": "Mongodb plugin for wocker",
     "license": "MIT",
