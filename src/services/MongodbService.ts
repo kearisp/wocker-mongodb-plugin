@@ -124,6 +124,16 @@ export class MongodbService {
             changed = true;
         }
 
+        if(props.volume) {
+            service.volume = props.volume;
+            changed = true;
+        }
+
+        if(props.configVolume) {
+            service.configVolume = props.configVolume;
+            changed = true;
+        }
+
         if(changed) {
             this.config.setDatabase(service);
             this.config.save();
@@ -152,12 +162,12 @@ export class MongodbService {
             }
         }
 
-        if(database.configStorage === database.defaultConfigStorage && await this.dockerService.hasVolume(database.configStorage)) {
-            await this.dockerService.rmVolume(database.configStorage);
+        if(database.configVolume === database.defaultConfigStorage && await this.dockerService.hasVolume(database.configVolume)) {
+            await this.dockerService.rmVolume(database.configVolume);
         }
 
-        if(database.storage === database.defaultStorage && await this.dockerService.hasVolume(database.storage)) {
-            await this.dockerService.rmVolume(database.storage);
+        if(database.volume === database.defaultStorage && await this.dockerService.hasVolume(database.volume)) {
+            await this.dockerService.rmVolume(database.volume);
         }
 
         this.config.removeDatabase(database.name);
@@ -192,6 +202,14 @@ export class MongodbService {
         }
 
         if(!container) {
+            if(!await this.dockerService.hasVolume(database.configVolume)) {
+                await this.dockerService.createVolume(database.configVolume);
+            }
+
+            if(!await this.dockerService.hasVolume(database.volume)) {
+                await this.dockerService.createVolume(database.volume);
+            }
+
             container = await this.dockerService.createContainer({
                 name: database.containerName,
                 restart: "always",
@@ -203,8 +221,8 @@ export class MongodbService {
                     MONGO_ROOT_PASSWORD: database.password
                 },
                 volumes: [
-                    `${database.configStorage}:/data/configdb`,
-                    `${database.storage}:/data/db`
+                    `${database.configVolume}:/data/configdb`,
+                    `${database.volume}:/data/db`
                 ]
             });
         }
@@ -316,7 +334,7 @@ export class MongodbService {
                 database.username,
                 database.containerName,
                 database.image,
-                `${database.configStorage}\n${database.storage}`
+                `${database.configVolume}\n${database.volume}`
             ]);
         }
 
