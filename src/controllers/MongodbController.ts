@@ -71,12 +71,26 @@ export class MongodbController {
             alias: "I",
             description: "The image version to start the service with"
         })
-        imageVersion?: string
+        imageVersion?: string,
+        @Option("volume", {
+            type: "string",
+            alias: "v",
+            description: "The volume name to start the service with"
+        })
+        volume?: string,
+        @Option("config-volume", {
+            type: "string",
+            alias: "V",
+            description: "The config volume name to start the service with"
+        })
+        configVolume?: string
     ): Promise<void> {
         await this.mongodbService.upgrade({
             name,
             imageName,
-            imageVersion
+            imageVersion,
+            volume,
+            configVolume
         });
     }
 
