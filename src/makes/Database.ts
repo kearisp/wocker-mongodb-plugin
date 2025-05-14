@@ -1,7 +1,5 @@
-import {Config, ConfigProperties} from "@wocker/core";
-
-
-export type DatabaseProps = ConfigProperties & {
+export type DatabaseProps = {
+    name: string;
     imageName?: string;
     imageVersion?: string;
     username: string;
@@ -12,7 +10,8 @@ export type DatabaseProps = ConfigProperties & {
     configVolume?: string;
 };
 
-export class Database extends Config<DatabaseProps> {
+export class Database {
+    public name: string;
     public imageName?: string;
     public imageVersion?: string;
     public username: string;
@@ -21,8 +20,6 @@ export class Database extends Config<DatabaseProps> {
     protected _volume?: string;
 
     public constructor(props: DatabaseProps) {
-        super(props);
-
         const {
             name,
             imageName,
