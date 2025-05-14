@@ -11,6 +11,7 @@ import {MongodbService} from "../services/MongodbService";
 
 
 @Controller()
+@Description("MongoDB commands")
 export class MongodbController {
     public constructor(
         protected readonly mongodbService: MongodbService
