@@ -258,7 +258,7 @@ export class MongodbService {
 
                 if(Running) {
                     connections.push(`mongodb://${database.username}:${database.password}@${database.containerName}:27017`);
-                    // Multiple servers are not supported by mongo-express
+                    // Mongo-express does not support multiple servers
                     break;
                 }
             }
