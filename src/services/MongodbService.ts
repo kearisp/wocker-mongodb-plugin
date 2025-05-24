@@ -5,9 +5,8 @@ import {
     DockerService,
     ProxyService
 } from "@wocker/core";
-import {promptText, promptConfirm} from "@wocker/utils";
+import {promptInput, promptConfirm} from "@wocker/utils";
 import CliTable from "cli-table3";
-
 import {Config, ConfigProps} from "../makes/Config";
 import {Database, DatabaseProps} from "../makes/Database";
 
@@ -54,9 +53,9 @@ export class MongodbService {
         }
 
         if(!props.name) {
-            props.name = await promptText({
-                message: "Mongodb name:",
-                type: "string",
+            props.name = await promptInput({
+                message: "Mongodb name",
+                type: "text",
                 validate: (name?: string) => {
                     if(!name) {
                         return "Name is required";
@@ -72,21 +71,21 @@ export class MongodbService {
         }
 
         if(!props.username) {
-            props.username = await promptText({
+            props.username = await promptInput({
                 message: "Username:",
-                type: "string",
+                type: "text",
                 required: true
             });
         }
 
         if(!props.password) {
-            props.password = await promptText({
+            props.password = await promptInput({
                 message: "Password:",
                 type: "password",
                 required: true
             }) as string;
 
-            const confirmPassword = await promptText({
+            const confirmPassword = await promptInput({
                 message: "Confirm password:",
                 type: "password",
                 required: true
@@ -259,7 +258,7 @@ export class MongodbService {
 
                 if(Running) {
                     connections.push(`mongodb://${database.username}:${database.password}@${database.containerName}:27017`);
-                    // Multiple servers are not supported by mongo-express
+                    // Mongo-express does not support multiple servers
                     break;
                 }
             }
