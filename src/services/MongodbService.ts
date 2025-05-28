@@ -3,9 +3,11 @@ import {
     Injectable,
     PluginConfigService,
     DockerService,
-    ProxyService
+    ProxyService,
+    FileSystem
 } from "@wocker/core";
-import {promptInput, promptConfirm} from "@wocker/utils";
+import {promptInput, promptConfirm, promptSelect, demuxOutput} from "@wocker/utils";
+import {formatDate} from "date-fns/format";
 import CliTable from "cli-table3";
 import {Config, ConfigProps} from "../makes/Config";
 import {Database, DatabaseProps} from "../makes/Database";
@@ -44,6 +46,10 @@ export class MongodbService {
         }
 
         return this._config;
+    }
+
+    public get fs(): FileSystem {
+        return this.pluginConfigService.fs;
     }
 
     public async create(props: Partial<DatabaseProps> = {}): Promise<void> {
@@ -182,11 +188,11 @@ export class MongodbService {
     }
 
     public async start(name?: string, restart?: boolean): Promise<void> {
-        if(!this.pluginConfigService.isVersionGTE("1.0.19")) {
+        if(!this.pluginConfigService.isVersionGTE("1.0.22")) {
             throw new Error("Please update @wocker/ws");
         }
 
-        if(!name || !this.config.default) {
+        if(!name && !this.config.default) {
             await this.create();
         }
 
@@ -314,6 +320,204 @@ export class MongodbService {
         console.info(`Stopping ${database.name}...`);
 
         await this.dockerService.removeContainer(database.containerName);
+    }
+
+    public async backup(name?: string, database?: string): Promise<void> {
+        const service = this.config.getDatabaseOrDefault(name);
+
+        if(!database) {
+            database = await promptSelect({
+                message: "Database",
+                required: true,
+                options: await this.getDatabases(service)
+            });
+        }
+
+        if(!this.fs.exists(`dump/${service.name}/${database}`)) {
+            this.fs.mkdir(`dump/${service.name}/${database}`, {
+                recursive: true
+            });
+        }
+
+        let filename = formatDate(new Date(), "yyyy-MM-dd HH-mm") + ".sql";
+
+        const fileStream = this.fs.createWriteStream(`dump/${service.name}/${database}/${filename}`);
+
+        const stream = await this.dockerService.exec(service.containerName, [
+            "mongodump",
+            "--authenticationDatabase", "admin",
+            "--host", `${service.containerName}:27017`,
+            "--username", "root",
+            "--password", "toor",
+            "--db", database,
+            "--archive",
+            "--gzip"
+        ], false);
+
+        stream.on("data", (chunk) => {
+            fileStream.write(demuxOutput(chunk));
+        });
+
+        try {
+            await new Promise((resolve, reject) => {
+                stream.on("end", resolve);
+                stream.on("error", reject);
+            });
+        }
+        finally {
+            fileStream.close();
+        }
+    }
+
+    public async deleteBackup(name?: string, database?: string, filename?: string, confirm?: boolean): Promise<void> {
+        const service = this.config.getDatabaseOrDefault(name);
+
+        if(!database) {
+            const databases = this.fs.readdir(`dumps/${service.name}`);
+
+            if(databases.length === 0) {
+                throw new Error(`No backups were found for the "${service.name}" service`);
+            }
+
+            database = await promptSelect({
+                message: "Database",
+                required: true,
+                options: databases
+            });
+        }
+
+        if(!filename) {
+            const files = this.fs.readdir(`dumps/${service.name}/${database}`);
+
+            if(files.length === 0) {
+                throw new Error(`No backup files found for the "${database}" database`);
+            }
+
+            filename = await promptSelect({
+                message: "File",
+                required: true,
+                options: files
+            });
+        }
+
+        if(!confirm) {
+            confirm = await promptConfirm({
+                message: "Are you sure you want to delete?",
+                default: false
+            });
+        }
+
+        if(!confirm) {
+            throw new Error("Canceled");
+        }
+
+        this.fs.rm(`dumps/${service.name}/${database}/${filename}`);
+
+        console.info(`File "${filename}" deleted`);
+
+        const otherFiles = this.fs.readdir(`dump/${service.name}/${database}`);
+
+        if(otherFiles.length === 0) {
+            this.fs.rm(`dump/${service.name}/${database}`, {
+                force: true,
+                recursive: true
+            });
+        }
+    }
+
+    public async restore(name?: string, database?: string, filename?: string): Promise<void> {
+        const service = this.config.getDatabaseOrDefault(name);
+
+        if(!database) {
+            const databases = this.fs.readdir(`dumps/${service.name}`);
+
+            if(databases.length === 0) {
+                throw new Error(`No backups were found for the "${service.name}" service`);
+            }
+
+            database = await promptSelect({
+                message: "Database",
+                required: true,
+                options: databases
+            });
+        }
+
+        if(!filename) {
+            const files = this.fs.readdir(`dumps/${service.name}/${database}`);
+
+            if(files.length === 0) {
+                throw new Error(`No backup files found for the "${database}" database`);
+            }
+
+            filename = await promptSelect({
+                message: "File",
+                required: true,
+                options: files
+            });
+        }
+
+        const file = this.fs.createReadStream(`dumps/${service.name}/${database}/${filename}`);
+        const stream = await this.dockerService.exec(service.containerName, [
+             "mongorestore",
+            "--authenticationDatabase", "admin",
+            "--host", `${service.containerName}:27017`,
+            "--username", service.username,
+            "--password", service.password,
+            "--db", database,
+            "--drop",
+            "--gzip",
+            "--archive"
+        ], false);
+
+        await new Promise<void>((resolve, reject): void => {
+            file.on("data", (data): void => {
+                stream.write(data);
+            });
+
+            file.on("error", (err: Error): void => {
+                stream.destroy();
+
+                reject(err);
+            });
+
+            stream.on("finish", (): void => {
+                resolve();
+            });
+
+            stream.on("error", (err: Error): void => {
+                file.close();
+
+                reject(err);
+            });
+        });
+    }
+
+    public async getDatabases(service: Database): Promise<string[]> {
+        const stream = await this.dockerService.exec(service.containerName, [
+            "mongosh",
+            "--username", service.username,
+            "--password", service.password,
+            "--quiet",
+            "--eval", "db.getMongo().getDBNames().forEach(function(i){print(i)})"
+        ], false);
+
+        const res = await new Promise<string>((resolve, reject) => {
+            let res = "";
+
+            stream.on("data", (chunk): void => {
+                res += demuxOutput(chunk).toString();
+            });
+
+            stream.on("end", (): void => {
+                resolve(res);
+            });
+
+            stream.on("error", reject);
+        });
+
+        return res.split(/\r?\n/).filter((database: string) => {
+            return !!database;
+        });
     }
 
     public async list(): Promise<string> {

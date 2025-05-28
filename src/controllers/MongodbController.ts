@@ -158,8 +158,45 @@ export class MongodbController {
         return this.mongodbService.list();
     }
 
+    @Command("mongodb:backup [name]")
+    public async backup(
+        @Param("name")
+        service?: string,
+        @Option("database", "d")
+        @Description("Database name to back up")
+        database?: string,
+        @Option("filename", "f")
+        @Description("Name of the backup file")
+        file?: string,
+        @Option("delete", "D")
+        @Description("Delete the specified backup file")
+        del?: boolean
+    ): Promise<void> {
+        if(del) {
+            await this.mongodbService.deleteBackup(service, database, file);
+            return;
+        }
+
+        await this.mongodbService.backup(service, database);
+    }
+
+    @Command("mongodb:restore [name]")
+    public async restore(
+        @Param("name")
+        service?: string,
+        @Option("database", "d")
+        @Description("Database name to restore")
+        database?: string,
+        @Option("file-name", "f")
+        @Description("File name")
+        file?: string
+    ): Promise<void> {
+        await this.mongodbService.restore(service, database, file);
+    }
+
     @Completion("name", "mongodb:start [name]")
     @Completion("name", "mongodb:stop [name]")
+    @Completion("name", "mongodb:backup [name]")
     public async getNames(): Promise<string[]> {
         return this.mongodbService.config.databases.map((database) => {
             return database.name;
