@@ -1,6 +1,6 @@
 {
     "name": "@wocker/mongodb-plugin",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "author": "Kris Papercut <krispcut@gmail.com>",
     "description": "Mongodb plugin for wocker",
     "license": "MIT",
@@ -28,7 +28,8 @@
     "dependencies": {
         "@wocker/core": "^1.0.22",
         "@wocker/utils": "^2.0.3",
-        "cli-table3": "^0.6.5"
+        "cli-table3": "^0.6.5",
+        "date-fns": "^4.1.0"
     },
     "devDependencies": {
         "@types/node": "^22.14.1",
