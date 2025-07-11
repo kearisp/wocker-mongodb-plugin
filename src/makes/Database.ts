@@ -8,6 +8,7 @@ export type DatabaseProps = {
     storage?: string;
     volume?: string;
     configVolume?: string;
+    containerPort?: number;
 };
 
 export class Database {
@@ -16,6 +17,7 @@ export class Database {
     public imageVersion?: string;
     public username: string;
     public password: string;
+    public containerPort?: number;
     protected _configVolume?: string;
     protected _volume?: string;
 
@@ -29,7 +31,8 @@ export class Database {
             configStorage,
             configVolume,
             storage,
-            volume
+            volume,
+            containerPort
         } = props;
 
         this.name = name;
@@ -39,6 +42,7 @@ export class Database {
         this.password = password;
         this._configVolume = configStorage || configVolume;
         this._volume = storage || volume;
+        this.containerPort = containerPort;
     }
 
     public get containerName(): string {
@@ -96,7 +100,8 @@ export class Database {
             username: this.username,
             password: this.password,
             volume: this._volume,
-            configVolume: this._configVolume
+            configVolume: this._configVolume,
+            containerPort: this.containerPort
         };
     }
 }

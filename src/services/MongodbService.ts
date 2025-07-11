@@ -102,6 +102,23 @@ export class MongodbService {
             }
         }
 
+        if(!props.containerPort) {
+            const needPort = await promptConfirm({
+                message: "Do you need to expose container port?",
+                default: false
+            });
+
+            if(needPort) {
+                props.containerPort = await promptInput({
+                    required: true,
+                    message: "Container port:",
+                    type: "number",
+                    min: 1,
+                    default: 27017
+                });
+            }
+        }
+
         const database = new Database({
             name: props.name,
             imageName: props.imageName,
@@ -136,6 +153,11 @@ export class MongodbService {
 
         if(props.configVolume) {
             service.configVolume = props.configVolume;
+            changed = true;
+        }
+
+        if(props.containerPort) {
+            service.containerPort = props.containerPort;
             changed = true;
         }
 
@@ -228,7 +250,10 @@ export class MongodbService {
                 volumes: [
                     `${database.configVolume}:/data/configdb`,
                     `${database.volume}:/data/db`
-                ]
+                ],
+                ports: database.containerPort ? [
+                    `${database.containerPort}:27017`
+                ] : undefined
             });
         }
 
@@ -273,7 +298,7 @@ export class MongodbService {
 
         await this.dockerService.removeContainer(this.adminContainerName);
 
-        if(connections.length === 0) {
+        if(!this.config.admin.enabled || connections.length === 0) {
             return;
         }
 
@@ -535,7 +560,7 @@ export class MongodbService {
             table.push([
                 database.name + (database.name === this.config.default ? " (default)" : ""),
                 database.username,
-                database.containerName,
+                database.containerName + (database.containerPort ? `:${database.containerPort}` : ""),
                 database.image,
                 `${database.configVolume}\n${database.volume}`
             ]);

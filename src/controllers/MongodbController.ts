@@ -44,14 +44,18 @@ export class MongodbController {
             alias: "I",
             description: "The image version to start the service with"
         })
-        imageVersion?: string
+        imageVersion?: string,
+        @Option("container-port")
+        @Description("Port on which the database container will be accessible on the host")
+        containerPort?: number
     ): Promise<void> {
         await this.mongodbService.create({
             name,
             username,
             password,
             imageName,
-            imageVersion
+            imageVersion,
+            containerPort
         });
     }
 
@@ -83,15 +87,33 @@ export class MongodbController {
             alias: "V",
             description: "The config volume name to start the service with"
         })
-        configVolume?: string
+        configVolume?: string,
+        @Option("container-port")
+        @Description("Port on which the database container will be accessible on the host")
+        containerPort?: number,
+        @Option("enable-admin")
+        enableAdmin?: boolean,
+        @Option("disable-admin")
+        disableAdmin?: boolean
     ): Promise<void> {
         await this.mongodbService.upgrade({
             name,
             imageName,
             imageVersion,
             volume,
-            configVolume
+            configVolume,
+            containerPort
         });
+
+        if(typeof enableAdmin !== "undefined") {
+            this.mongodbService.config.admin.enabled = true;
+            this.mongodbService.config.save();
+        }
+
+        if(typeof disableAdmin !== "undefined") {
+            this.mongodbService.config.admin.enabled = false;
+            this.mongodbService.config.save();
+        }
     }
 
     @Command("mongodb:destroy <name>")
