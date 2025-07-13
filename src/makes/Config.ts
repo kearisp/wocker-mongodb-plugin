@@ -1,23 +1,35 @@
 import {Database, DatabaseProps} from "./Database";
 
 
+export type AdminConfig = {
+    enabled: boolean;
+};
+
 export type ConfigProps = {
     default?: string;
     databases?: DatabaseProps[];
+    admin?: AdminConfig;
 };
 
 export abstract class Config {
     public default?: string;
     public databases: Database[];
+    public admin: AdminConfig;
 
     public constructor(props: ConfigProps) {
         const {
             default: defaultDatabase,
-            databases = []
+            databases = [],
+            admin: {
+                enabled: enabledAdmin = true
+            } = {}
         } = props;
 
         this.default = defaultDatabase;
         this.databases = databases.map(database => new Database(database));
+        this.admin = {
+            enabled: enabledAdmin
+        };
     }
 
     public setDatabase(database: Database): void {
@@ -90,7 +102,8 @@ export abstract class Config {
             default: this.default,
             databases: this.databases.length > 0
                 ? this.databases.map((database) => database.toObject())
-                : []
+                : [],
+            admin: this.admin
         };
     }
 }
