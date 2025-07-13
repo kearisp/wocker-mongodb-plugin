@@ -216,9 +216,13 @@ export class MongodbController {
         await this.mongodbService.restore(service, database, file);
     }
 
+    @Completion("name", "mongodb:use <name>")
     @Completion("name", "mongodb:start [name]")
     @Completion("name", "mongodb:stop [name]")
+    @Completion("name", "mongodb:restore [name]")
     @Completion("name", "mongodb:backup [name]")
+    @Completion("name", "mongodb:upgrade [name]")
+    @Completion("name", "mongodb:destroy <name>")
     public async getNames(): Promise<string[]> {
         return this.mongodbService.config.databases.map((database) => {
             return database.name;
