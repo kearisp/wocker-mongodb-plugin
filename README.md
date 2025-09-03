@@ -2,6 +2,12 @@
 
 ###### Docker workspace for web projects
 
+[![npm version](https://img.shields.io/npm/v/@wocker/mongodb-plugin.svg)](https://www.npmjs.com/package/@wocker/mongodb-plugin)
+[![Publish](https://github.com/kearisp/wocker-mongodb-plugin/actions/workflows/publish-latest.yml/badge.svg?event=release)](https://github.com/kearisp/wocker-mongodb-plugin/actions/workflows/publish-latest.yml)
+[![License](https://img.shields.io/npm/l/@wocker/mongodb-plugin)](https://github.com/kearisp/wocker-mongodb-plugin/blob/master/LICENSE)
+
+[![npm total downloads](https://img.shields.io/npm/dt/@wocker/mongodb-plugin.svg)](https://www.npmjs.com/package/@wocker/mongodb-plugin)
+
 ## Installation
 
 **Note:** It is recommended to install Wocker globally to ensure accessibility from any directory in your terminal.
