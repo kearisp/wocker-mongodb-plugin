@@ -364,6 +364,10 @@ export class MongodbService {
             "--gzip"
         ], false);
 
+        if(!stream) {
+            return;
+        }
+
         stream.on("data", (chunk) => {
             fileStream.write(demuxOutput(chunk));
         });
@@ -479,6 +483,10 @@ export class MongodbService {
             "--archive"
         ], false);
 
+        if(!stream) {
+            return;
+        }
+
         await new Promise<void>((resolve, reject): void => {
             file.on("data", (data): void => {
                 stream.write(data);
@@ -510,6 +518,10 @@ export class MongodbService {
             "--quiet",
             "--eval", "db.getMongo().getDBNames().forEach(function(i){print(i)})"
         ], false);
+
+        if(!stream) {
+            return [];
+        }
 
         const res = await new Promise<string>((resolve, reject) => {
             let res = "";
