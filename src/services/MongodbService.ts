@@ -109,7 +109,8 @@ export class MongodbService {
             imageName: props.imageName,
             imageVersion: props.imageVersion,
             username: props.username as string,
-            password: props.password as string
+            password: props.password as string,
+            containerPort: props.containerPort
         });
 
         this.config.setDatabase(database);
