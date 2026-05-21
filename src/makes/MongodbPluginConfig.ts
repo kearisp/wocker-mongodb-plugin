@@ -1,4 +1,4 @@
-import {FileSystem} from "@wocker/core";
+import {PluginConfig} from "@wocker/core";
 import {Database, DatabaseProps} from "./Database";
 
 
@@ -12,19 +12,21 @@ export type ConfigProps = {
     admin?: AdminConfig;
 };
 
-export abstract class Config {
+export class MongodbPluginConfig extends PluginConfig {
     public default?: string;
     public databases: Database[];
     public admin: AdminConfig;
 
-    public constructor(props: ConfigProps) {
+    public constructor(data: ConfigProps) {
+        super(data);
+
         const {
             default: defaultDatabase,
             databases = [],
             admin: {
                 enabled: enabledAdmin = true
             } = {}
-        } = props;
+        } = data;
 
         this.default = defaultDatabase;
         this.databases = databases.map(database => new Database(database));
@@ -96,8 +98,6 @@ export abstract class Config {
         }
     }
 
-    public abstract save(): void;
-
     public toObject(): ConfigProps {
         return {
             default: this.default,
@@ -106,23 +106,5 @@ export abstract class Config {
                 : [],
             admin: this.admin
         };
-    }
-
-    public static make(fs: FileSystem): Config {
-        const data: ConfigProps = fs.exists("config.json")
-            ? fs.readJSON("config.json")
-            : {};
-
-        return new class extends Config {
-            public save(): void {
-                if(!fs.exists()) {
-                    fs.mkdir("", {
-                        recursive: true
-                    });
-                }
-
-                fs.writeJSON("config.json", this.toObject());
-            }
-        }(data);
     }
 }

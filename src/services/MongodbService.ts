@@ -1,5 +1,4 @@
 import {
-    AppConfigService,
     Injectable,
     PluginConfigService,
     DockerService,
@@ -9,25 +8,24 @@ import {
 import {promptInput, promptConfirm, promptSelect, demuxOutput} from "@wocker/utils";
 import {formatDate} from "date-fns/format";
 import CliTable from "cli-table3";
-import {Config} from "../makes/Config";
+import {MongodbPluginConfig} from "../makes/MongodbPluginConfig";
 import {Database, DatabaseProps} from "../makes/Database";
 
 
 @Injectable()
 export class MongodbService {
-    protected _config?: Config;
+    protected _config?: MongodbPluginConfig;
     public adminContainerName = "dbadmin-mongodb.workspace";
 
     public constructor(
-        protected readonly appConfigService: AppConfigService,
         protected readonly pluginConfigService: PluginConfigService,
         protected readonly dockerService: DockerService,
         protected readonly proxyService: ProxyService
     ) {}
 
-    public get config(): Config {
+    public get config(): MongodbPluginConfig {
         if(!this._config) {
-            this._config = Config.make(this.pluginConfigService.fs);
+            this._config = this.pluginConfigService.getConfig(MongodbPluginConfig);
         }
 
         return this._config;
