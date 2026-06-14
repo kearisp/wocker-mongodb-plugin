@@ -17,7 +17,7 @@ npm i -g @wocker/ws
 ```
 
 ```shell
-ws plugin:add mongodb
+ws plugin:install mongodb
 ```
 
 
