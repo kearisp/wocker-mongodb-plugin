@@ -16,6 +16,34 @@ export class MongodbController {
         protected readonly mongodbService: MongodbService
     ) {}
 
+    @Command("mongodb [name]")
+    @Description("Opens an interactive mongosh session for a specified MongoDB service.")
+    public async mongosh(
+        @Param("name")
+        name?: string,
+        @Option("database", {
+            type: "string",
+            alias: "d",
+            description: "<name> Specify the database to connect to"
+        })
+        database?: string
+    ): Promise<void> {
+        await this.mongodbService.mongosh(name, database);
+    }
+
+    @Command("mongodb:init")
+    @Description("Initializes the MongoDB configuration.")
+    public async init(
+        @Option("admin-hostname", {
+            type: "string",
+            alias: "A",
+            description: "Specifies the mongo-express hostname."
+        })
+        adminHostname?: string
+    ): Promise<void> {
+        await this.mongodbService.init(adminHostname);
+    }
+
     @Command("mongodb:create [name]")
     @Description("Creates a MongoDB service with configurable credentials, host, and storage options.")
     public async create(
@@ -36,15 +64,9 @@ export class MongodbController {
         @Option("image", {
             type: "string",
             alias: "i",
-            description: "The image name to start the service with",
+            description: "The image to start the service with, e.g. \"mongo:6\""
         })
-        imageName?: string,
-        @Option("image-version", {
-            type: "string",
-            alias: "I",
-            description: "The image version to start the service with"
-        })
-        imageVersion?: string,
+        image?: string,
         @Option("container-port")
         @Description("Port on which the database container will be accessible on the host")
         containerPort?: number
@@ -53,8 +75,7 @@ export class MongodbController {
             name,
             username,
             password,
-            imageName,
-            imageVersion,
+            image,
             containerPort
         });
     }
@@ -67,15 +88,9 @@ export class MongodbController {
         @Option("image", {
             type: "string",
             alias: "i",
-            description: "The image name to start the service with"
+            description: "The image to start the service with, e.g. \"mongo:6\""
         })
-        imageName?: string,
-        @Option("image-version", {
-            type: "string",
-            alias: "I",
-            description: "The image version to start the service with"
-        })
-        imageVersion?: string,
+        image?: string,
         @Option("volume", {
             type: "string",
             alias: "v",
@@ -98,8 +113,7 @@ export class MongodbController {
     ): Promise<void> {
         await this.mongodbService.upgrade({
             name,
-            imageName,
-            imageVersion,
+            image,
             volume,
             configVolume,
             containerPort
@@ -139,12 +153,18 @@ export class MongodbController {
         await this.mongodbService.admin();
     }
 
-    @Command("mongodb:use <name>")
-    @Description("Sets a specified MongoDB service as the default.")
+    @Command("mongodb:use [name]")
+    @Description("Sets a specified MongoDB service as the default, or prints the current default when no name is given.")
     public async use(
         @Param("name")
-        name: string
-    ): Promise<void> {
+        name?: string
+    ): Promise<string | undefined> {
+        if(!name) {
+            const database = this.mongodbService.config.getDefault();
+
+            return database.name;
+        }
+
         this.mongodbService.use(name);
     }
 
@@ -216,7 +236,8 @@ export class MongodbController {
         await this.mongodbService.restore(service, database, file);
     }
 
-    @Completion("name", "mongodb:use <name>")
+    @Completion("name", "mongodb [name]")
+    @Completion("name", "mongodb:use [name]")
     @Completion("name", "mongodb:start [name]")
     @Completion("name", "mongodb:stop [name]")
     @Completion("name", "mongodb:restore [name]")
@@ -227,5 +248,78 @@ export class MongodbController {
         return this.mongodbService.config.databases.map((database) => {
             return database.name;
         });
+    }
+
+    @Completion("database", "mongodb:backup [name]")
+    @Completion("database", "mongodb [name]")
+    public async getDatabases(
+        @Param("name")
+        name?: string
+    ): Promise<string[]> {
+        try {
+            const service = this.mongodbService.config.getDatabaseOrDefault(name);
+
+            return await this.mongodbService.getDatabases(service);
+        }
+        catch(err) {
+            return [];
+        }
+    }
+
+    @Completion("database", "mongodb:restore [name]")
+    public async getDumpDatabases(
+        @Param("name")
+        name?: string
+    ): Promise<string[]> {
+        try {
+            const service = this.mongodbService.config.getDatabaseOrDefault(name);
+
+            return await this.mongodbService.getDumpDatabases(service);
+        }
+        catch(err) {
+            return [];
+        }
+    }
+
+    @Completion("filename", "mongodb:backup [name]")
+    public async getBackupFilenames(
+        @Param("name")
+        name?: string,
+        @Option("database")
+        database?: string
+    ): Promise<string[]> {
+        if(!database) {
+            return [];
+        }
+
+        try {
+            const service = this.mongodbService.config.getDatabaseOrDefault(name);
+
+            return await this.mongodbService.getDumpFiles(service, database);
+        }
+        catch(err) {
+            return [];
+        }
+    }
+
+    @Completion("file-name", "mongodb:restore [name]")
+    public async getRestoreFilenames(
+        @Param("name")
+        name?: string,
+        @Option("database")
+        database?: string
+    ): Promise<string[]> {
+        if(!database) {
+            return [];
+        }
+
+        try {
+            const service = this.mongodbService.config.getDatabaseOrDefault(name);
+
+            return await this.mongodbService.getDumpFiles(service, database);
+        }
+        catch(err) {
+            return [];
+        }
     }
 }

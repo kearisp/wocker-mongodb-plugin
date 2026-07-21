@@ -5,7 +5,8 @@ import {
     ProxyService,
     FileSystem
 } from "@wocker/core";
-import {promptInput, promptConfirm, promptSelect, demuxOutput} from "@wocker/utils";
+import {promptInput, promptConfirm, promptSelect} from "@wocker/prompts";
+import {demuxOutput} from "@wocker/utils";
 import {formatDate} from "date-fns/format";
 import CliTable from "cli-table3";
 import {MongodbPluginConfig} from "../makes/MongodbPluginConfig";
@@ -15,7 +16,6 @@ import {Database, DatabaseProps} from "../makes/Database";
 @Injectable()
 export class MongodbService {
     protected _config?: MongodbPluginConfig;
-    public adminContainerName = "dbadmin-mongodb.workspace";
 
     public constructor(
         protected readonly pluginConfigService: PluginConfigService,
@@ -33,6 +33,49 @@ export class MongodbService {
 
     public get fs(): FileSystem {
         return this.pluginConfigService.fs;
+    }
+
+    public async mongosh(name?: string, database?: string): Promise<void> {
+        const service = this.config.getDatabaseOrDefault(name);
+
+        const container = await this.dockerService.getContainer(service.containerName);
+
+        if(!container) {
+            throw new Error(`Service "${service.name}" is not started`);
+        }
+
+        if(!database && process.stdin.isTTY) {
+            database = await promptSelect({
+                message: "Database:",
+                options: await this.getDatabases(service)
+            });
+        }
+
+        await this.dockerService.exec(service.containerName, {
+            cmd: [
+                "mongosh",
+                "--username", service.username,
+                "--password", service.password,
+                ...(database ? [database] : [])
+            ],
+            tty: true
+        });
+    }
+
+    public async init(adminHostname?: string): Promise<void> {
+        const config = this.config;
+
+        if(!adminHostname) {
+            adminHostname = await promptInput({
+                message: "Admin hostname",
+                required: true,
+                default: config.admin.hostname
+            }) as string;
+        }
+
+        config.admin.hostname = adminHostname;
+
+        config.save();
     }
 
     public async create(props: Partial<DatabaseProps> = {}): Promise<void> {
@@ -104,8 +147,7 @@ export class MongodbService {
 
         const database = new Database({
             name: props.name,
-            imageName: props.imageName,
-            imageVersion: props.imageVersion,
+            image: props.image,
             username: props.username as string,
             password: props.password as string,
             containerPort: props.containerPort
@@ -120,13 +162,8 @@ export class MongodbService {
 
         let changed = false;
 
-        if(props.imageName) {
-            service.imageName = props.imageName;
-            changed = true;
-        }
-
-        if(props.imageVersion) {
-            service.imageVersion = props.imageVersion;
+        if(props.image) {
+            service.image = props.image;
             changed = true;
         }
 
@@ -255,6 +292,7 @@ export class MongodbService {
     }
 
     public async admin(): Promise<void> {
+        const hostname = this.config.admin.hostname;
         const connections: string[] = [];
 
         for(const database of this.config.databases) {
@@ -280,13 +318,13 @@ export class MongodbService {
             catch(ignore) {}
         }
 
-        await this.dockerService.removeContainer(this.adminContainerName);
+        await this.dockerService.removeContainer(hostname);
 
         if(!this.config.admin.enabled || connections.length === 0) {
             return;
         }
 
-        let container = await this.dockerService.getContainer(this.adminContainerName);
+        let container = await this.dockerService.getContainer(hostname);
 
         if(!container) {
             console.info("Mongodb Admin starting...");
@@ -294,13 +332,13 @@ export class MongodbService {
             await this.dockerService.pullImage("mongo-express:latest");
 
             container = await this.dockerService.createContainer({
-                name: this.adminContainerName,
+                name: hostname,
                 image: "mongo-express:latest",
                 restart: "always",
                 env: {
-                    VIRTUAL_HOST: this.adminContainerName,
+                    VIRTUAL_HOST: hostname,
                     VIRTUAL_PORT: "80",
-                    VCAP_APP_HOST: this.adminContainerName,
+                    VCAP_APP_HOST: hostname,
                     PORT: "80",
                     ME_CONFIG_BASICAUTH: "false",
                     ME_CONFIG_BASICAUTH_USERNAME: "",
@@ -331,6 +369,22 @@ export class MongodbService {
         await this.dockerService.removeContainer(database.containerName);
     }
 
+    public async getDumpDatabases(service: Database): Promise<string[]> {
+        if(!this.fs.exists(`dump/${service.name}`)) {
+            return [];
+        }
+
+        return this.fs.readdir(`dump/${service.name}`);
+    }
+
+    public async getDumpFiles(service: Database, database: string): Promise<string[]> {
+        if(!this.fs.exists(`dump/${service.name}/${database}`)) {
+            return [];
+        }
+
+        return this.fs.readdir(`dump/${service.name}/${database}`);
+    }
+
     public async backup(name?: string, database?: string): Promise<void> {
         const service = this.config.getDatabaseOrDefault(name);
 
@@ -356,8 +410,8 @@ export class MongodbService {
             "mongodump",
             "--authenticationDatabase", "admin",
             "--host", `${service.containerName}:27017`,
-            "--username", "root",
-            "--password", "toor",
+            "--username", service.username,
+            "--password", service.password,
             "--db", database,
             "--archive",
             "--gzip"
@@ -386,7 +440,7 @@ export class MongodbService {
         const service = this.config.getDatabaseOrDefault(name);
 
         if(!database) {
-            const databases = this.fs.readdir(`dumps/${service.name}`);
+            const databases = await this.getDumpDatabases(service);
 
             if(databases.length === 0) {
                 throw new Error(`No backups were found for the "${service.name}" service`);
@@ -400,7 +454,7 @@ export class MongodbService {
         }
 
         if(!filename) {
-            const files = this.fs.readdir(`dumps/${service.name}/${database}`);
+            const files = await this.getDumpFiles(service, database);
 
             if(files.length === 0) {
                 throw new Error(`No backup files found for the "${database}" database`);
@@ -424,7 +478,7 @@ export class MongodbService {
             throw new Error("Canceled");
         }
 
-        this.fs.rm(`dumps/${service.name}/${database}/${filename}`);
+        this.fs.rm(`dump/${service.name}/${database}/${filename}`);
 
         console.info(`File "${filename}" deleted`);
 
@@ -442,7 +496,7 @@ export class MongodbService {
         const service = this.config.getDatabaseOrDefault(name);
 
         if(!database) {
-            const databases = this.fs.readdir(`dumps/${service.name}`);
+            const databases = await this.getDumpDatabases(service);
 
             if(databases.length === 0) {
                 throw new Error(`No backups were found for the "${service.name}" service`);
@@ -456,7 +510,7 @@ export class MongodbService {
         }
 
         if(!filename) {
-            const files = this.fs.readdir(`dumps/${service.name}/${database}`);
+            const files = await this.getDumpFiles(service, database);
 
             if(files.length === 0) {
                 throw new Error(`No backup files found for the "${database}" database`);
@@ -469,7 +523,7 @@ export class MongodbService {
             });
         }
 
-        const file = this.fs.createReadStream(`dumps/${service.name}/${database}/${filename}`);
+        const file = this.fs.createReadStream(`dump/${service.name}/${database}/${filename}`);
         const stream = await this.dockerService.exec(service.containerName, [
              "mongorestore",
             "--authenticationDatabase", "admin",
@@ -548,17 +602,47 @@ export class MongodbService {
                 "Username",
                 "Host",
                 "Image",
-                "Storages"
+                "Storages",
+                "Status",
+                "IP"
             ]
         });
 
         for(const database of this.config.databases) {
+            let status = "stopped";
+            let ip = "-";
+
+            try {
+                const container = await this.dockerService.getContainer(database.containerName);
+
+                if(container) {
+                    const {
+                        State: {
+                            Running
+                        },
+                        NetworkSettings: {
+                            Networks: {
+                                workspace: {
+                                    IPAddress
+                                }
+                            }
+                        }
+                    } = await container.inspect();
+
+                    status = Running ? "running" : "stopped";
+                    ip = IPAddress || "-";
+                }
+            }
+            catch(ignore) {}
+
             table.push([
                 database.name + (database.name === this.config.default ? " (default)" : ""),
                 database.username,
                 database.containerName + (database.containerPort ? `:${database.containerPort}` : ""),
                 database.image,
-                `${database.configVolume}\n${database.volume}`
+                `${database.configVolume}\n${database.volume}`,
+                status,
+                ip
             ]);
         }
 

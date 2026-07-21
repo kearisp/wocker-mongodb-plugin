@@ -4,35 +4,38 @@ import {Database, DatabaseProps} from "./Database";
 
 export type AdminConfig = {
     enabled: boolean;
+    hostname: string;
 };
 
 export type ConfigProps = {
     default?: string;
-    databases?: DatabaseProps[];
     admin?: AdminConfig;
+    databases?: DatabaseProps[];
 };
 
 export class MongodbPluginConfig extends PluginConfig {
     public default?: string;
-    public databases: Database[];
     public admin: AdminConfig;
+    public databases: Database[];
 
     public constructor(data: ConfigProps) {
         super(data);
 
         const {
             default: defaultDatabase,
-            databases = [],
             admin: {
-                enabled: enabledAdmin = true
-            } = {}
+                enabled: enabledAdmin = true,
+                hostname: adminHostname = "dbadmin-mongodb.workspace"
+            } = {},
+            databases = []
         } = data;
 
         this.default = defaultDatabase;
-        this.databases = databases.map(database => new Database(database));
         this.admin = {
-            enabled: enabledAdmin
+            enabled: enabledAdmin,
+            hostname: adminHostname
         };
+        this.databases = databases.map(database => new Database(database));
     }
 
     public setDatabase(database: Database): void {
@@ -101,10 +104,10 @@ export class MongodbPluginConfig extends PluginConfig {
     public toObject(): ConfigProps {
         return {
             default: this.default,
+            admin: this.admin,
             databases: this.databases.length > 0
                 ? this.databases.map((database) => database.toObject())
-                : [],
-            admin: this.admin
+                : []
         };
     }
 }

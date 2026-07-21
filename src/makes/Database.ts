@@ -1,6 +1,12 @@
+import {Image} from "@wocker/utils";
+
+
 export type DatabaseProps = {
     name: string;
+    image?: string;
+    /** @deprecated use "image" */
     imageName?: string;
+    /** @deprecated use "image" */
     imageVersion?: string;
     username: string;
     password: string;
@@ -13,17 +19,17 @@ export type DatabaseProps = {
 
 export class Database {
     public name: string;
-    public imageName?: string;
-    public imageVersion?: string;
     public username: string;
     public password: string;
     public containerPort?: number;
+    protected _image?: string;
     protected _configVolume?: string;
     protected _volume?: string;
 
     public constructor(props: DatabaseProps) {
         const {
             name,
+            image,
             imageName,
             imageVersion,
             username,
@@ -36,8 +42,7 @@ export class Database {
         } = props;
 
         this.name = name;
-        this.imageName = imageName;
-        this.imageVersion = imageVersion;
+        this._image = image || (imageName ? new Image(imageName, imageVersion).toString() : undefined);
         this.username = username;
         this.password = password;
         this._configVolume = configStorage || configVolume;
@@ -50,14 +55,24 @@ export class Database {
     }
 
     public get image(): string {
-        const imageName = this.imageName || "mongo",
-            imageVersion = this.imageVersion;
-
-        if(!imageVersion) {
-            return imageName;
+        if(!this._image) {
+            return "mongo:latest";
         }
 
-        return `${imageName}:${imageVersion}`;
+        return this._image;
+    }
+
+    public set image(image: string | undefined) {
+        if(!image) {
+            delete this._image;
+            return;
+        }
+
+        if(!Image.isValid(image)) {
+            throw new Error(`Invalid image ${image}`);
+        }
+
+        this._image = image;
     }
 
     public get volume(): string {
@@ -95,8 +110,7 @@ export class Database {
     public toObject(): DatabaseProps {
         return {
             name: this.name,
-            imageName: this.imageName,
-            imageVersion: this.imageVersion,
+            image: this._image,
             username: this.username,
             password: this.password,
             volume: this._volume,
