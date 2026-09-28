@@ -6,7 +6,7 @@ import {
     FileSystem
 } from "@wocker/core";
 import {promptInput, promptConfirm, promptSelect} from "@wocker/prompts";
-import {demuxOutput} from "@wocker/utils";
+import {demuxOutput} from "@wocker/helpers";
 import {formatDate} from "date-fns/format";
 import CliTable from "cli-table3";
 import {MongodbPluginConfig} from "../makes/MongodbPluginConfig";
