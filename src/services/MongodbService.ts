@@ -6,7 +6,7 @@ import {
     FileSystem
 } from "@wocker/core";
 import {promptInput, promptConfirm, promptSelect} from "@wocker/prompts";
-import {demuxOutput} from "@wocker/utils";
+import {demuxOutput} from "@wocker/helpers";
 import {formatDate} from "date-fns/format";
 import CliTable from "cli-table3";
 import {MongodbPluginConfig} from "../makes/MongodbPluginConfig";
@@ -262,6 +262,7 @@ export class MongodbService {
                 name: database.containerName,
                 restart: "always",
                 image: database.image,
+                internal: true,
                 env: {
                     MONGO_INITDB_ROOT_USERNAME: database.username,
                     MONGO_INITDB_ROOT_PASSWORD: database.password,
@@ -335,6 +336,7 @@ export class MongodbService {
                 name: hostname,
                 image: "mongo-express:latest",
                 restart: "always",
+                internal: true,
                 env: {
                     VIRTUAL_HOST: hostname,
                     VIRTUAL_PORT: "80",
