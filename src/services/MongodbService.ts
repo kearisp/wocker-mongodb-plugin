@@ -262,6 +262,7 @@ export class MongodbService {
                 name: database.containerName,
                 restart: "always",
                 image: database.image,
+                internal: true,
                 env: {
                     MONGO_INITDB_ROOT_USERNAME: database.username,
                     MONGO_INITDB_ROOT_PASSWORD: database.password,
@@ -335,6 +336,7 @@ export class MongodbService {
                 name: hostname,
                 image: "mongo-express:latest",
                 restart: "always",
+                internal: true,
                 env: {
                     VIRTUAL_HOST: hostname,
                     VIRTUAL_PORT: "80",
